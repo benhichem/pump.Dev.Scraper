@@ -1,8 +1,11 @@
 
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { TokenData } from "./types";
+import type { TokenData, DevMonitoredTokens } from "./types";
 import { createTokenMonitor } from "./monitor";
+import { CollectWalletsInfo } from "./Wallets";
+import { loadFilterConfig, applyFilter } from "./filter";
+import { appendToCsv, readCsvCreators } from "./utils";
 
 type responseType = {
     code: number
@@ -12,14 +15,26 @@ type responseType = {
 }
 async function Monitor() {
     puppeteer.use(StealthPlugin())
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({ headless: false, userDataDir: 'profile' });
     const page = await browser.newPage();
     await page.setViewport({ height: 900, width: 1600 });
 
-    const Monitor = createTokenMonitor({ maxHistorySize: 2, trackInitialSnapshot: false });
+    const Monitor = createTokenMonitor(
+        {
+            maxHistorySize: 2,
+            trackInitialSnapshot: true
+        }
+    );
+
+    const filterConfig = await loadFilterConfig();
 
     try {
-        await page.goto('https://gmgn.ai/trend/Q2Wot3l7?chain=sol&tab=surge', { timeout: 0, waitUntil: "networkidle2" });
+        await page.goto('https://gmgn.ai/trend/Q2Wot3l7?chain=sol&tab=surge',
+            {
+                timeout: 0,
+                waitUntil: "networkidle2"
+            }
+        );
         while (true) {
             const tokens = await page.evaluate(async () => {
                 const res = await fetch("https://gmgn.ai/vas/api/v1/token-signal/v2?device_id=a47fc4ed-5d51-4cca-a933-65e141a8feb3&fp_did=2070248d364ff97f8c1930891fc9f0a5&client_id=gmgn_web_20260226-11203-6e1aa24&from_app=gmgn&app_ver=20260226-11203-6e1aa24&tz_name=Africa%2FAlgiers&tz_offset=3600&app_lang=en-US&os=web&worker=0", {
@@ -62,16 +77,39 @@ async function Monitor() {
             })
 
             const report = Monitor.analyze(tokens_data)
-            console.log('New Tokens Added ::', report.newTokens);
+            const newTokens = report.newTokens as DevMonitoredTokens[]
+            console.log('New Tokens Added ::', newTokens);
 
-            if (report.newTokens.length > 0) {
-                const outputFile = Bun.file('output.json');
-                const existing: Array<any> = await outputFile.exists() && outputFile.size > 0
-                    ? await outputFile.json()
-                    : [];
-                const merged = [...existing, ...report.newTokens];
-                await Bun.write('output.json', JSON.stringify(merged, null, 2));
-                console.log(`Saved ${report.newTokens.length} new token(s) to output.json (total: ${merged.length})`);
+            if (newTokens.length > 0) {
+                const seenCreators = await readCsvCreators('wallets.csv');
+                const unseen = newTokens.filter(t => !seenCreators.has(t.creator));
+
+                if (unseen.length === 0) {
+                    console.log('All new token creators already processed, skipping.');
+                } else {
+                    console.log(`Scraping ${unseen.length} new creator(s)...`);
+                    const walletResult = await CollectWalletsInfo(unseen.splice(0, 5), browser);
+
+                    if (!walletResult.success) {
+                        console.log('[ERROR] CollectWalletsInfo failed:', walletResult.error);
+                    } else {
+                        if (walletResult.value.errors.length > 0)
+                            console.log('[WARN] Per-wallet errors:', walletResult.value.errors);
+
+                        for (const wallet of walletResult.value.wallets) {
+                            const passingTokens = applyFilter(wallet.tokens, filterConfig);
+                            if (passingTokens.length === 0) continue;
+
+                            await appendToCsv('wallets.csv', {
+                                name: wallet.name,
+                                address: wallet.address,
+                                chain: wallet.chain,
+                                creator: wallet.creator,
+                            });
+                            console.log(`[CSV] Saved wallet ${wallet.creator} (${passingTokens.length} qualifying token(s))`);
+                        }
+                    }
+                }
             }
 
             await Bun.sleep(5000);

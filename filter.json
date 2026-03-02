@@ -1,0 +1,5 @@
+{
+    "minAthMc": 1000,
+    "minPassRate": 0,
+    "maxTokenAgeMins": 60
+}
