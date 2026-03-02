@@ -38,3 +38,11 @@ export const appendToCsv = async <T extends Record<string, unknown>>(
         return left(`Failed to write CSV at "${filePath}": ${String(error)}`);
     }
 };
+
+export const readCsvCreators = async (filePath: string): Promise<Set<string>> => {
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) return new Set();
+    const text = await file.text();
+    const { data } = Papa.parse<Record<string, string>>(text, { header: true });
+    return new Set(data.map(row => row['creator']).filter(Boolean) as string[]);
+};

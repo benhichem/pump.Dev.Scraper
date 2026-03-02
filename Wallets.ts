@@ -1,7 +1,7 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { DevMonitoredTokens } from "./types";
-import { getDataSource } from "./database/data-source";
+import type { Browser } from "puppeteer";
 
 puppeteer.use(StealthPlugin());
 
@@ -30,24 +30,24 @@ function getDevAccountUrl(token: Pick<DevMonitoredTokens, 'chain' | 'creator'>):
     return `https://gmgn.ai/${token.chain}/address/${token.creator}`;
 }
 
-async function CollectWalletsInfo(
-    data: Array<DevMonitoredTokens>
+export async function CollectWalletsInfo(
+    data: Array<DevMonitoredTokens>, browser: Browser
 ): Promise<Result<CollectionResult, WalletCollectError>> {
 
     const wallets: Array<DevMonitoredTokens & { tokens: Array<any> }> = [];
     const errors: WalletCollectError[] = [];
-    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
-
-    try {
-        browser = await puppeteer.launch({ headless: false, userDataDir: "profile" });
-    } catch (error) {
-        const e: WalletCollectError = {
-            type: 'BrowserLaunchError',
-            message: `[ERROR] Browser launch failed: ${String(error)}`
-        };
-        console.log(e.message);
-        return { success: false, error: e };
-    }
+    /*     let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
+    
+        try {
+            browser = await puppeteer.launch({ headless: false, userDataDir: "profile" });
+        } catch (error) {
+            const e: WalletCollectError = {
+                type: 'BrowserLaunchError',
+                message: `[ERROR] Browser launch failed: ${String(error)}`
+            };
+            console.log(e.message);
+            return { success: false, error: e };
+        } */
 
     try {
         const page = await browser.newPage();
@@ -70,13 +70,7 @@ async function CollectWalletsInfo(
                     ? { type: 'NavigationTimeout', message: `[WARN] Navigation timed out for ${devWalletUrl}`, ...ctx }
                     : { type: 'NavigationError', message: `[WARN] Navigation failed for ${devWalletUrl}: ${String(error)}`, ...ctx };
                 console.log(e.message);
-                /*    if (errors.length > 2) return {
-                       success: false,
-                       error: {
-                           type: "UnexpectedShape",
-                           message: "Navigation failed for more than 3 times please contact Dev ASAP"
-                       }
-                   }; */
+
                 errors.push(e);
                 continue;
             }
@@ -174,13 +168,11 @@ async function CollectWalletsInfo(
         }
 
     } finally {
-        await browser.close();
+
     }
 
     return { success: true, value: { wallets, errors } };
 }
-
-await getDataSource()
 
 /* CollectWalletsInfo([{
     "name": "Spank",
