@@ -6,6 +6,8 @@ import { createTokenMonitor } from "./monitor";
 import { CollectWalletsInfo } from "./Wallets";
 import { loadFilterConfig, applyFilter } from "./filter";
 import { appendToCsv, readCsvCreators } from "./utils";
+import { getDataSource } from "./database/data-source";
+import { Token } from "./database/entities/Token";
 
 type responseType = {
     code: number
@@ -27,6 +29,8 @@ async function Monitor() {
     );
 
     const filterConfig = await loadFilterConfig();
+    const db = await getDataSource();
+    const tokenRepo = db.getRepository(Token);
 
     try {
         await page.goto('https://gmgn.ai/trend/Q2Wot3l7?chain=sol&tab=surge',
@@ -97,6 +101,18 @@ async function Monitor() {
                             console.log('[WARN] Per-wallet errors:', walletResult.value.errors);
 
                         for (const wallet of walletResult.value.wallets) {
+                            // DB — save every scraped wallet, no filter
+                            const record = tokenRepo.create({
+                                address: wallet.address,
+                                name: wallet.name,
+                                chain: wallet.chain,
+                                creator: wallet.creator,
+                                creator_time: wallet.creator_time,
+                            });
+                            await tokenRepo.upsert(record, ['address']);
+                            console.log(`[DB] Saved wallet ${wallet.creator}`);
+
+                            // CSV — only qualifying wallets
                             const passingTokens = applyFilter(wallet.tokens, filterConfig);
                             if (passingTokens.length === 0) continue;
 

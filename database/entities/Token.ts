@@ -3,20 +3,20 @@ import { Entity, PrimaryColumn, Column, CreateDateColumn } from 'typeorm';
 @Entity()
 export class Token {
     @PrimaryColumn()
-    address: string;
+    address!: string;
 
     @Column()
-    name: string;
+    name!: string;
 
     @Column()
-    chain: string;
+    chain!: string;
 
     @Column()
-    creator: string;
+    creator!: string;
 
     @Column({ type: 'integer' })
-    creator_time: number;
+    creator_time!: number;
 
     @CreateDateColumn()
-    scraped_at: Date;
+    scraped_at!: Date;
 }
