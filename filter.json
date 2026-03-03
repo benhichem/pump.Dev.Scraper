@@ -1,6 +1,6 @@
 {
-    "minAthMc": 1000,
-    "minPassRate": 0,
-    "minTokens": 15,
-    "maxTokenAgeMins": 60
+    "minAthMc": 9000,
+    "minPassRate": 15,
+    "minTokens": 1,
+    "maxTokenAgeMins": 0
 }

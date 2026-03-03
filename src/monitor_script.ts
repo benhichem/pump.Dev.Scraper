@@ -3,7 +3,7 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { TokenData, DevMonitoredTokens } from "./types";
 import { createTokenMonitor } from "./monitor";
-import { CollectWalletsInfo } from "./Wallets";
+import { CollectWalletsInfo } from "./wallets";
 import { loadFilterConfig, applyFilter } from "./filter";
 import { appendToCsv, readCsvCreators } from "./utils";
 import { getDataSource } from "./database/data-source";
@@ -15,7 +15,7 @@ type responseType = {
     message: string;
     data: TokenData[]
 }
-async function Monitor() {
+export async function Monitor() {
     puppeteer.use(StealthPlugin())
     const browser = await puppeteer.launch({ headless: false, userDataDir: 'profile' });
     const page = await browser.newPage();
@@ -137,4 +137,4 @@ async function Monitor() {
     }
 }
 
-Monitor();
+if (import.meta.main) Monitor();
