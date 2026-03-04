@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun index.ts"
+    "start": "bun src/tui.tsx"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -14,12 +14,16 @@
   },
   "dependencies": {
     "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.2.14",
     "fp-ts": "^2.16.11",
     "grammy": "^1.38.4",
+    "ink": "^6.8.0",
+    "ink-text-input": "^6.0.0",
     "papaparse": "^5.5.3",
     "puppeteer": "^24.37.5",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "react": "^19.2.4",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",
     "typeorm": "^0.3.28"

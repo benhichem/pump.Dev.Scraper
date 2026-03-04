@@ -48,9 +48,9 @@ export async function CollectWalletsInfo(
             console.log(e.message);
             return { success: false, error: e };
         } */
-
+    const page = await browser.newPage();
     try {
-        const page = await browser.newPage();
+
         await page.setViewport({ height: 900, width: 1600 });
         await page.setRequestInterception(true);
         page.on('request', (req) => { req.continue(); });
@@ -168,7 +168,7 @@ export async function CollectWalletsInfo(
         }
 
     } finally {
-
+        await page.close();
     }
 
     return { success: true, value: { wallets, errors } };
