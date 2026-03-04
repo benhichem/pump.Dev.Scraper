@@ -5,7 +5,7 @@ import TextInput from 'ink-text-input';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Phase = 'form' | 'menu';
-type Mode  = 'monitor' | 'database';
+type Mode  = 'monitor' | 'database' | 'login';
 type Field = { key: string; value: string };
 
 type BorderStyleValue = 'single' | 'double' | 'round' | 'bold' | 'singleDouble' | 'doubleSingle' | 'classic' | 'arrow';
@@ -18,8 +18,9 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
 };
 
 const MENU_OPTIONS: { label: string; mode: Mode; description: string }[] = [
-    { label: 'Monitor Script',     mode: 'monitor',  description: 'Scrape dev wallets and monitor tokens live' },
-    { label: 'Look from Database', mode: 'database', description: 'Query previously saved token data'          },
+    { label: 'Monitor Script',     mode: 'monitor',  description: 'Scrape dev wallets and monitor tokens live'   },
+    { label: 'Look from Database', mode: 'database', description: 'Query previously saved token data'            },
+    { label: 'Login to gmgn.ai',   mode: 'login',    description: 'Open browser to sign in and save your session' },
 ];
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -296,6 +297,7 @@ if (pendingMode) {
     const scripts: Record<Mode, string> = {
         monitor:  'src/monitor_script.ts',
         database: 'src/db_script.ts',
+        login:    'src/login_script.ts',
     };
     const proc = Bun.spawn(['bun', scripts[pendingMode]], {
         stdio: ['inherit', 'inherit', 'inherit'],

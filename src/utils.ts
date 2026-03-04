@@ -46,3 +46,27 @@ export const readCsvCreators = async (filePath: string): Promise<Set<string>> =>
     const { data } = Papa.parse<Record<string, string>>(text, { header: true });
     return new Set(data.map(row => row['creator']).filter(Boolean) as string[]);
 };
+
+export interface RetryOptions {
+    maxAttempts: number;
+    baseDelayMs: number;
+    onRetry?: (attempt: number, error: Error) => void;
+}
+
+export async function withRetry<T>(
+    fn: () => Promise<T>,
+    opts: RetryOptions
+): Promise<T> {
+    let attempt = 0;
+    while (true) {
+        try {
+            return await fn();
+        } catch (err) {
+            attempt++;
+            if (attempt >= opts.maxAttempts) throw err;
+            const delay = opts.baseDelayMs * Math.pow(2, Math.min(attempt - 1, 6));
+            opts.onRetry?.(attempt, err as Error);
+            await Bun.sleep(delay);
+        }
+    }
+}

@@ -3,7 +3,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { DevMonitoredTokens } from "./types";
 import { CollectWalletsInfo } from "./wallets";
 import { loadFilterConfig, applyFilter } from "./filter";
-import { appendToCsv } from "./utils";
+import { appendToCsv, withRetry } from "./utils";
 import { getDataSource } from "./database/data-source";
 import { Token } from "./database/entities/Token";
 
@@ -35,6 +35,17 @@ export async function DatabaseLookup() {
         const result = await CollectWalletsInfo(uniqueCreators, browser);
 
         if (!result.success) {
+            if (result.error.type === 'NotLoggedIn') {
+                console.error([
+                    '',
+                    '  ✖  PUMP SCRAPER — Account Logged Out',
+                    '',
+                    '     The gmgn.ai session has expired.',
+                    '     Open the Chromium profile window, sign in, then restart.',
+                    '',
+                ].join('\n'));
+                process.exit(1);
+            }
             console.log('[ERROR] CollectWalletsInfo failed:', result.error);
             return;
         }
@@ -63,4 +74,17 @@ export async function DatabaseLookup() {
     }
 }
 
-if (import.meta.main) DatabaseLookup();
+if (import.meta.main) {
+    withRetry(
+        () => DatabaseLookup(),
+        {
+            maxAttempts: 5,
+            baseDelayMs: 5_000,
+            onRetry: (n, err) =>
+                console.error(`[DB LOOKUP] Attempt ${n} failed: ${err.message}. Retrying...`),
+        }
+    ).catch(err => {
+        console.error('[DB LOOKUP] All attempts exhausted:', err.message);
+        process.exit(1);
+    });
+}
