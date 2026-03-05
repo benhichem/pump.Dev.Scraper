@@ -12,8 +12,8 @@ import type { Repository } from "typeorm";
 type SolscanResponse = {
     success: boolean;
     data: Array<{
-        trans_id:    string;
-        block_time:  number;
+        trans_id: string;
+        block_time: number;
         from_address: string;
         amount_info: unknown;
     }>;
@@ -146,10 +146,10 @@ export async function SoulScrape() {
                 }) as SolscanResponse;
 
                 const tokens_data = response.data.map(item => ({
-                    name:         '',
-                    address:      item.trans_id,
-                    chain:        'sol',
-                    creator:      item.from_address,
+                    name: '',
+                    address: item.trans_id,
+                    chain: 'sol',
+                    creator: item.from_address,
                     creator_time: item.block_time,
                 }));
 
