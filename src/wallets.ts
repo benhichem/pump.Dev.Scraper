@@ -61,23 +61,25 @@ export async function CollectWalletsInfo(
             const ctx = { walletUrl: devWalletUrl, creator: currentToken.creator };
 
             // Navigation
+            console.log(`[WALLET] (${index + 1}/${data.length}) Navigating to gmgn.ai for creator ${currentToken.creator}...`);
             try {
                 await page.goto(devWalletUrl);
             } catch (error) {
                 const isTimeout = error instanceof Error &&
                     error.constructor.name === 'TimeoutError';
                 const e: WalletCollectError = isTimeout
-                    ? { type: 'NavigationTimeout', message: `[WARN] Navigation timed out for ${devWalletUrl}`, ...ctx }
-                    : { type: 'NavigationError', message: `[WARN] Navigation failed for ${devWalletUrl}: ${String(error)}`, ...ctx };
+                    ? { type: 'NavigationTimeout', message: `[WALLET] Navigation timed out for ${devWalletUrl}`, ...ctx }
+                    : { type: 'NavigationError', message: `[WALLET] Navigation failed for ${devWalletUrl}: ${String(error)}`, ...ctx };
                 console.log(e.message);
-
                 errors.push(e);
                 continue;
             }
 
-            await Bun.sleep(9000);
+            console.log(`[WALLET] Page loaded. Waiting 9s for client-side rendering...`);
+            await Bun.sleep(3000);
 
             // NotLoggedIn check — fatal, exits the entire function
+            console.log(`[WALLET] Checking login status...`);
             const isLoggedOut = await page.evaluate((sel: string): boolean => {
                 const el = document.querySelector(sel);
                 return el !== null && (el.textContent?.includes('Log in') ?? false);
@@ -93,6 +95,7 @@ export async function CollectWalletsInfo(
             }
 
             // Button existence check (textContent is layout-independent, unlike innerText)
+            console.log(`[WALLET] Logged in. Looking for "Deployed Tokens" button...`);
             const buttonExists = await page.evaluate((): boolean => {
                 return Array.from(document.querySelectorAll('button'))
                     .some(btn => (btn.textContent ?? '').includes('Deployed Tokens'));
@@ -101,7 +104,7 @@ export async function CollectWalletsInfo(
             if (!buttonExists) {
                 const e: WalletCollectError = {
                     type: 'ButtonNotFound',
-                    message: `[WARN] "Deployed Tokens" button not found at ${devWalletUrl}`,
+                    message: `[WALLET] "Deployed Tokens" button not found at ${devWalletUrl}`,
                     ...ctx
                 };
                 console.log(e.message);
@@ -111,6 +114,7 @@ export async function CollectWalletsInfo(
 
             // Await XHR response — Promise.all ensures waitForResponse is registered
             // before the click fires, preventing the response from being missed
+            console.log(`[WALLET] Button found. Clicking and waiting for XHR response (up to 15s)...`);
             let response: Awaited<ReturnType<typeof page.waitForResponse>>;
             try {
                 [response] = await Promise.all([
@@ -127,7 +131,7 @@ export async function CollectWalletsInfo(
             } catch (error) {
                 const e: WalletCollectError = {
                     type: 'ResponseTimeout',
-                    message: `[WARN] Response timed out for ${currentToken.creator}`,
+                    message: `[WALLET] XHR response timed out for ${currentToken.creator}`,
                     ...ctx
                 };
                 console.log(e.message);
@@ -142,7 +146,7 @@ export async function CollectWalletsInfo(
             } catch (error) {
                 const e: WalletCollectError = {
                     type: 'ResponseParseError',
-                    message: `[ERROR] Failed to parse response for ${currentToken.creator}: ${String(error)}`,
+                    message: `[WALLET] Failed to parse response for ${currentToken.creator}: ${String(error)}`,
                     ...ctx
                 };
                 console.log(e.message);
@@ -155,7 +159,7 @@ export async function CollectWalletsInfo(
             if (!Array.isArray(tokens)) {
                 const e: WalletCollectError = {
                     type: 'UnexpectedShape',
-                    message: `[ERROR] Unexpected response shape for ${currentToken.creator}: "data.tokens" is ${typeof tokens}`,
+                    message: `[WALLET] Unexpected response shape for ${currentToken.creator}: "data.tokens" is ${typeof tokens}`,
                     ...ctx
                 };
                 console.log(e.message);
@@ -163,7 +167,7 @@ export async function CollectWalletsInfo(
                 continue;
             }
 
-            console.log(`Tokens for wallet ${currentToken.creator}:`, JsonResponse);
+            console.log(`[WALLET] Got ${tokens.length} deployed token(s) for creator ${currentToken.creator}.`);
             wallets.push({ ...currentToken, tokens });
         }
 

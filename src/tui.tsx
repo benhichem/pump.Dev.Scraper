@@ -295,7 +295,7 @@ await waitUntilExit();
 
 if (pendingMode) {
     const scripts: Record<Mode, string> = {
-        monitor:  'src/monitor_script.ts',
+        monitor:  'src/soulScrape.ts',
         database: 'src/db_script.ts',
         login:    'src/login_script.ts',
     };
