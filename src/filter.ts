@@ -3,6 +3,7 @@ export type FilterConfig = {
     minPassRate?: number | null;     // Minimum fraction of tokens that must pass minAthMc (e.g. 0.8 = 80%)
     minTokens?: number | null;       // Minimum number of deployed tokens a wallet must have
     maxTokenAgeMins?: number | null; // Reserved for future use
+    maxTokens?: number | null;       // Maximum qualifying tokens — wallets above this are DB-only (excluded from CSV)
 };
 
 export async function loadFilterConfig(): Promise<FilterConfig> {

@@ -5,7 +5,7 @@ import TextInput from 'ink-text-input';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Phase = 'form' | 'menu';
-type Mode  = 'monitor' | 'database' | 'login';
+type Mode  = 'monitor' | 'monitor_gmgn' | 'database' | 'login';
 type Field = { key: string; value: string };
 
 type BorderStyleValue = 'single' | 'double' | 'round' | 'bold' | 'singleDouble' | 'doubleSingle' | 'classic' | 'arrow';
@@ -15,12 +15,14 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
     minPassRate:      'Minimum % of dev tokens that must pass the filter',
     minTokens:        'Minimum number of tokens deployed by the dev wallet',
     maxTokenAgeMins:  'Maximum token age in minutes to consider',
+    maxTokens:        'Max qualifying tokens — wallets above this are saved to DB only, not CSV',
 };
 
 const MENU_OPTIONS: { label: string; mode: Mode; description: string }[] = [
-    { label: 'Monitor Script',     mode: 'monitor',  description: 'Scrape dev wallets and monitor tokens live'   },
-    { label: 'Look from Database', mode: 'database', description: 'Query previously saved token data'            },
-    { label: 'Login to gmgn.ai',   mode: 'login',    description: 'Open browser to sign in and save your session' },
+    { label: 'Monitor Soulscan',        mode: 'monitor',      description: 'Scrape dev wallets via Solscan feed'              },
+    { label: 'Monitor GMGN Trenches',   mode: 'monitor_gmgn', description: 'Monitor new tokens via gmgn.ai WebSocket'         },
+    { label: 'Look from Database',      mode: 'database',     description: 'Query previously saved token data'                },
+    { label: 'Login to gmgn.ai',        mode: 'login',        description: 'Open browser to sign in and save your session'   },
 ];
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -295,9 +297,10 @@ await waitUntilExit();
 
 if (pendingMode) {
     const scripts: Record<Mode, string> = {
-        monitor:  'src/soulScrape.ts',
-        database: 'src/db_script.ts',
-        login:    'src/login_script.ts',
+        monitor:      'src/soulScrape.ts',
+        monitor_gmgn: 'src/monitor_script.ts',
+        database:     'src/db_script.ts',
+        login:        'src/login_script.ts',
     };
     const proc = Bun.spawn(['bun', scripts[pendingMode]], {
         stdio: ['inherit', 'inherit', 'inherit'],
