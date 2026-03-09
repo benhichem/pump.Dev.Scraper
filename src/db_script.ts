@@ -31,21 +31,13 @@ export async function DatabaseLookup() {
     const outputPath = `wallets_${date}.csv`;
 
     const browser = await puppeteer.launch({ headless: false, userDataDir: 'profile' });
+    const gmgnPage = await browser.newPage();
+    await gmgnPage.goto('https://gmgn.ai/sol', { waitUntil: 'networkidle2' });
+    await Bun.sleep(3000);
     try {
-        const result = await CollectWalletsInfo(uniqueCreators, browser);
+        const result = await CollectWalletsInfo(uniqueCreators, gmgnPage);
 
         if (!result.success) {
-            if (result.error.type === 'NotLoggedIn') {
-                console.error([
-                    '',
-                    '  ✖  PUMP SCRAPER — Account Logged Out',
-                    '',
-                    '     The gmgn.ai session has expired.',
-                    '     Open the Chromium profile window, sign in, then restart.',
-                    '',
-                ].join('\n'));
-                process.exit(1);
-            }
             console.log('[ERROR] CollectWalletsInfo failed:', result.error);
             return;
         }
@@ -58,12 +50,12 @@ export async function DatabaseLookup() {
             const passing = applyFilter(wallet.tokens, filterConfig);
             if (passing.length === 0) continue;
 
-            await appendToCsv(outputPath, {
-                name: wallet.name,
-                address: wallet.address,
-                chain: wallet.chain,
-                creator: wallet.creator,
-            });
+            if (filterConfig.maxTokens != null && passing.length > filterConfig.maxTokens) {
+                console.log(`[CSV] Skipping wallet ${wallet.creator} — ${passing.length} qualifying tokens exceeds maxTokens (${filterConfig.maxTokens}), DB only.`);
+                continue;
+            }
+
+            await appendToCsv(outputPath, { address: wallet.address });
             saved++;
             console.log(`[CSV] Saved ${wallet.creator} (${passing.length} qualifying token(s))`);
         }

@@ -38,12 +38,12 @@ async function saveWallets(
         const passingTokens = applyFilter(wallet.tokens, filterConfig);
         if (passingTokens.length === 0) continue;
 
-        await appendToCsv('wallets.csv', {
-            name: wallet.name,
-            address: wallet.address,
-            chain: wallet.chain,
-            creator: wallet.creator,
-        });
+        if (filterConfig.maxTokens != null && passingTokens.length > filterConfig.maxTokens) {
+            console.log(`[CSV] Skipping wallet ${wallet.creator} — ${passingTokens.length} qualifying tokens exceeds maxTokens (${filterConfig.maxTokens}), DB only.`);
+            continue;
+        }
+
+        await appendToCsv('wallets.csv', { address: wallet.address });
         console.log(`[CSV] Saved wallet ${wallet.creator} (${passingTokens.length} qualifying token(s))`);
     }
 }
@@ -56,6 +56,12 @@ export async function SoulScrape() {
     const page = await browser.newPage();
     await page.setViewport({ height: 900, width: 1600 });
     console.log('[INIT] Browser ready.');
+
+    console.log('[INIT] Navigating gmgn.ai session page...');
+    const gmgnPage = await browser.newPage();
+    await gmgnPage.goto('https://gmgn.ai/sol', { waitUntil: 'networkidle2' });
+    await Bun.sleep(3000);
+    console.log('[INIT] gmgn.ai session ready.');
 
     const Monitor = createTokenMonitor({ maxHistorySize: 2, trackInitialSnapshot: true });
 
@@ -79,19 +85,8 @@ export async function SoulScrape() {
             }
             const batch = scrapeQueue.splice(0, 5);
             console.log(`[WORKER] Dequeued ${batch.length} creator(s) (${scrapeQueue.length} remaining). Starting gmgn.ai scrape...`);
-            const result = await CollectWalletsInfo(batch, browser);
+            const result = await CollectWalletsInfo(batch, gmgnPage);
             if (!result.success) {
-                if (result.error.type === 'NotLoggedIn') {
-                    console.error([
-                        '',
-                        '  ✖  PUMP SCRAPER — Account Logged Out',
-                        '',
-                        '     The gmgn.ai session has expired.',
-                        '     Open the Chromium profile window, sign in, then restart.',
-                        '',
-                    ].join('\n'));
-                    process.exit(1);
-                }
                 console.log('[WORKER] CollectWalletsInfo failed:', result.error);
             } else {
                 const { wallets, errors } = result.value;
@@ -191,6 +186,7 @@ export async function SoulScrape() {
         throw error;
     } finally {
         console.log('[SOUL SCRAPE] Shutting down browser...');
+        await gmgnPage?.close();
         await browser?.close();
     }
 }
